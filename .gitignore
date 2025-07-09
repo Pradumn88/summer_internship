@@ -1,0 +1,65 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Python environment
+.venv/
+venv/
+env/
+
+# Dataset and model files
+*.zip
+*.tar.gz
+*.h5
+*.hdf5
+*.ckpt
+*.pth
+*.pb
+*.pt
+
+# Model output and saved models
+saved_model/
+*.tflite
+*.onnx
+
+# Data folders (for training/testing/validation)
+chest_xray/
+logs/
+fit/
+
+# Node-related (frontend)
+**/node_modules/
+**/dist/
+**/build/
+
+# Lock and temp files
+package-lock.json
+yarn.lock
+
+# System-specific and temp files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# VS Code settings
+.vscode/
+*.code-workspace
+
+# Frontend dev configs
+*.env
+.env.*
+
+# Frontend framework outputs
+frontend/public/build/
+frontend/.next/
+frontend/.nuxt/
+
+# Jupyter/IPython checkpoints
+.ipynb_checkpoints/
+
+# PNGs, outputs, diagrams
+model_architecture.png
