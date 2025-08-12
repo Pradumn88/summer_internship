@@ -1,0 +1,7 @@
+Model Evaluation Report
+Date: 2025-08-11 22:35:12.245150
+Loss: 0.2327
+Accuracy: 90.55%
+Precision: 90.55%
+Recall: 90.55%
+AUC: 96.77%
