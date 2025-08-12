@@ -4,19 +4,6 @@ import warnings
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers, models, applications, callbacks
-import platform
-
-# --------------------------------------------------
-# MAC OPTIMIZATION - For Apple Silicon
-# --------------------------------------------------
-if platform.system() == 'Darwin':  # macOS
-    # Configure for Apple Silicon
-    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-    os.environ['TF_METAL_ENABLED'] = '1'
-    
-    # Reduce memory fragmentation
-    tf.config.threading.set_inter_op_parallelism_threads(4)
-    tf.config.threading.set_intra_op_parallelism_threads(4)
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -31,7 +18,7 @@ BATCH_SIZE = 32
 EPOCHS = 25
 FINE_TUNE_EPOCHS = 15
 
-# Ensure macOS-compatible paths
+# Ensure compatible paths
 BASE_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_FILE_DIR, "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
@@ -46,7 +33,7 @@ def load_trained_model():
         raise FileNotFoundError(f"Model file not found at: {MODEL_FILE}")
     
     try:
-        # Custom objects for M1 compatibility
+        # Custom objects for compatibility
         custom_objects = {
             'FixedDropout': layers.Dropout
         }
@@ -72,7 +59,7 @@ def load_trained_model():
         raise
 
 # --------------------------------------------------
-# DATA LOADING - Enhanced for macOS paths
+# DATA LOADING - Enhanced for paths
 # --------------------------------------------------
 def load_datasets():
     global BASE_DIR
@@ -380,13 +367,9 @@ def predict_image(model, img_path, class_names, num_samples=5):
 # --------------------------------------------------
 if __name__ == '__main__':
     print("\n" + "="*50)
-    print("🚀 PNEUMONIA DETECTION MODEL - OPTIMIZED FOR MAC")
+    print("🚀 PNEUMONIA DETECTION MODEL")
     print("="*50 + "\n")
     
-    # macOS specific optimizations
-    if platform.system() == 'Darwin':
-        print("🍎 Running on macOS - Applying optimizations")
-
     try:
         # Load data
         train_ds, val_ds, test_ds, class_names, class_counts = load_datasets()

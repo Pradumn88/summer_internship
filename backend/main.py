@@ -27,18 +27,9 @@ app.add_middleware(
 model = None
 class_labels = ["NORMAL", "PNEUMONIA"]
 
-# --------------------------------------------------
-# MAC-SPECIFIC OPTIMIZATIONS
-# --------------------------------------------------
-if platform.system() == 'Darwin':
-    # Configure for Apple Silicon
-    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-    os.environ['TF_METAL_ENABLED'] = '1'
-    print("🍎 Configured for Apple Silicon")
-
 @app.on_event("startup")
 async def startup_event():
-    """Load model and configure for macOS"""
+    """Load model and configure for Render/Linux"""
     global model
     
     print("🔄 Starting FastAPI... loading model...")
