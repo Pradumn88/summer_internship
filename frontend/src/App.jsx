@@ -207,11 +207,12 @@ function App() {
         </div>
       </div>
       
-      {/* Footer */}
+      {/* Footer - Updated text to trigger deployment */}
       <footer className={`mt-10 text-center text-sm ${
         darkMode ? 'text-gray-400' : 'text-gray-600'
       }`}>
         &copy; {new Date().getFullYear()} Pneumonia Insight AI. All rights reserved.
+        {/* Small change to trigger deployment */}
       </footer>
     </div>
   );
