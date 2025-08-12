@@ -196,6 +196,22 @@ function App() {
                     </a>
                   </div>
                 </div>
+
+                {/* Dataset Section */}
+                <div className="mt-4">
+                  <h3 className="font-bold mb-2">Training Dataset</h3>
+                  <a 
+                    href="https://universe.roboflow.com/mohamed-traore-2ekkp/chest-x-rays-qjmia/dataset/3" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    Chest X-Ray Dataset on Roboflow
+                  </a>
+                </div>
                 
                 <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                   <p>AI Model Version: PneumoNet v2.1</p>
@@ -207,12 +223,11 @@ function App() {
         </div>
       </div>
       
-      {/* Footer - Updated text to trigger deployment */}
+      {/* Footer */}
       <footer className={`mt-10 text-center text-sm ${
         darkMode ? 'text-gray-400' : 'text-gray-600'
       }`}>
         &copy; {new Date().getFullYear()} Pneumonia Insight AI. All rights reserved.
-        {/* Small change to trigger deployment */}
       </footer>
     </div>
   );
