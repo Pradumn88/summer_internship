@@ -57,13 +57,7 @@ function InfoCards({ darkMode }) {
           </div>
         ))}
         
-        <div className="mt-6 p-4 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-          <h3 className="font-bold text-lg mb-2">Take Our Health Quiz</h3>
-          <p className="mb-4">Test your knowledge about pneumonia prevention and symptoms</p>
-          <button className="px-4 py-2 bg-white text-blue-600 rounded-full font-medium">
-            Start Quiz
-          </button>
-        </div>
+        
       </div>
     </div>
   );
