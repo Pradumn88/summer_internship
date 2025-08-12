@@ -3,13 +3,14 @@ import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import HistoryPanel from './components/HistoryPanel';
 import InfoCards from './components/InfoCards';
+import TeamInfo from './components/TeamInfo';
 import './index.css';
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [prediction, setPrediction] = useState(null);
   const [history, setHistory] = useState([]);
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'history', 'info'
+  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'history', 'info', 'team'
 
   // Initialize dark mode from localStorage or system preference
   useEffect(() => {
@@ -70,15 +71,15 @@ function App() {
 
         {/* Main Content */}
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Panel - Upload/Result */}
+          {/* Left Panel - Tabs Content */}
           <div className="flex-1">
             <div className={`bg-white dark:bg-gray-800/80 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-2xl w-full border ${
               darkMode ? 'border-gray-700' : 'border-gray-200'
             } transition-all duration-500 ease-in-out transform hover:scale-[1.01]`}>
               {/* Tab Navigation */}
-              <div className="flex mb-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
                 <button 
-                  className={`py-2 px-4 font-medium ${
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
                     activeTab === 'upload' 
                       ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
                       : 'text-gray-500 dark:text-gray-400'
@@ -88,7 +89,7 @@ function App() {
                   Diagnosis
                 </button>
                 <button 
-                  className={`py-2 px-4 font-medium ${
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
                     activeTab === 'history' 
                       ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
                       : 'text-gray-500 dark:text-gray-400'
@@ -98,7 +99,7 @@ function App() {
                   History
                 </button>
                 <button 
-                  className={`py-2 px-4 font-medium ${
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
                     activeTab === 'info' 
                       ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
                       : 'text-gray-500 dark:text-gray-400'
@@ -106,6 +107,16 @@ function App() {
                   onClick={() => setActiveTab('info')}
                 >
                   Learn More
+                </button>
+                <button 
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    activeTab === 'team' 
+                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                  onClick={() => setActiveTab('team')}
+                >
+                  Our Team
                 </button>
               </div>
               
@@ -127,10 +138,14 @@ function App() {
               {activeTab === 'info' && (
                 <InfoCards darkMode={darkMode} />
               )}
+              
+              {activeTab === 'team' && (
+                <TeamInfo darkMode={darkMode} />
+              )}
             </div>
           </div>
           
-          {/* Right Panel - Information */}
+          {/* Right Panel - About This AI */}
           <div className="lg:w-1/3">
             <div className={`bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border ${
               darkMode ? 'border-gray-700' : 'border-gray-200'
