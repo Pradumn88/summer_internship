@@ -15,9 +15,12 @@ from model import load_trained_model, predict_image
 app = FastAPI()
 
 # Enable CORS for frontend communication
+# In backend/main.py
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    # Add your Vercel URL to this list
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://pneumonia-prediction-amber.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,9 +30,18 @@ app.add_middleware(
 model = None
 class_labels = ["NORMAL", "PNEUMONIA"]
 
+# --------------------------------------------------
+# MAC-SPECIFIC OPTIMIZATIONS
+# --------------------------------------------------
+if platform.system() == 'Darwin':
+    # Configure for Apple Silicon
+    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+    os.environ['TF_METAL_ENABLED'] = '1'
+    print("🍎 Configured for Apple Silicon")
+
 @app.on_event("startup")
 async def startup_event():
-    """Load model and configure for Render/Linux"""
+    """Load model and configure for macOS"""
     global model
     
     print("🔄 Starting FastAPI... loading model...")
