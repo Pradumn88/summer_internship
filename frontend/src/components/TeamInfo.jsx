@@ -20,7 +20,7 @@ function TeamInfo({ darkMode }) {
     {
       name: "Arpan Pareek",
       role: "Medical Consultant",
-      linkedin: "https://linkedin.com/in/mariagarcia"
+      linkedin: "https://www.linkedin.com/in/arpan-pareek-86582a2b7/"
     },
     {
       name: "Faizah",
