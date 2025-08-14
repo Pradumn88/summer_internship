@@ -4,27 +4,22 @@ function TeamInfo({ darkMode }) {
   const teamMembers = [
     {
       name: "Pradumn Pandey",
-      role: "AI Developer & Project Lead",
       linkedin: "https://www.linkedin.com/in/pradumnpandey/"
     },
     {
       name: "Hemank Kumar",
-      role: "Machine Learning Engineer",
       linkedin: "https://www.linkedin.com/in/hemankkumar/"
     },
     {
       name: "Yuvraj Singh Parmar",
-      role: "Frontend Developer",
       linkedin: "https://www.linkedin.com/in/yuvraj-singh-parmar-517762326/"
     },
     {
       name: "Arpan Pareek",
-      role: "Medical Consultant",
       linkedin: "https://www.linkedin.com/in/arpan-pareek-86582a2b7/"
     },
     {
       name: "Faizah",
-      role: "Backend Developer",
       linkedin: "https://www.linkedin.com/in/faaizah-qadri-2a3191311/"
     }
   ];
