@@ -132,27 +132,7 @@ function ResultDisplay({ prediction, darkMode }) {
       )}
       
       {/* Comparison Examples */}
-      <div className="mt-6 pt-4 border-t border-gray-300 dark:border-gray-700">
-        <h3 className="font-bold mb-3">Compare with Examples</h3>
-        <div className="flex justify-center space-x-4">
-          <div className="text-center">
-            <div className={`w-24 h-24 mx-auto rounded-lg overflow-hidden border-2 ${
-              darkMode ? 'border-blue-500' : 'border-blue-400'
-            }`}>
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-full" />
-            </div>
-            <p className="text-sm mt-1">Normal X-ray</p>
-          </div>
-          <div className="text-center">
-            <div className={`w-24 h-24 mx-auto rounded-lg overflow-hidden border-2 ${
-              darkMode ? 'border-red-500' : 'border-red-400'
-            }`}>
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-full" />
-            </div>
-            <p className="text-sm mt-1">Pneumonia X-ray</p>
-          </div>
-        </div>
-      </div>
+      
     </div>
   );
 }
