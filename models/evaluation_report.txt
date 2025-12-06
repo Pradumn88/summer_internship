@@ -1,0 +1,4 @@
+Model Evaluation Report
+Date: 2025-12-07 01:40:43.129494
+loss: 1.8680
+compile_metrics: 0.4559

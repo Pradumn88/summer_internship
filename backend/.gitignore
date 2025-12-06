@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore ENV files
+venv/
+.venv/
+
+# Ignore logs
+logs/

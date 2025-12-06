@@ -6,11 +6,16 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras import models
 from PIL import Image
 import io
-import os
 import csv
 import base64
 import cv2
 from datetime import datetime
+
+import os
+
+print("FILES IN /app/models:", os.listdir("models"))
+print("CURRENT DIRECTORY:", os.getcwd())
+
 
 # ------------------ PATHS & CONSTANTS ------------------
 
