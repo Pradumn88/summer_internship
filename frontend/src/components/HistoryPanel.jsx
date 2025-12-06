@@ -1,70 +1,66 @@
-import React from 'react';
+import React from "react";
 
-function HistoryPanel({ history, darkMode }) {
-  if (history.length === 0) {
-    return (
-      <div className="text-center py-10">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <h3 className="text-xl font-medium mt-4">No History Yet</h3>
-        <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Your past predictions will appear here
-        </p>
-      </div>
-    );
-  }
+function HistoryPanel({ history, darkMode, onSelect, compact }) {
+  const cardStyle = darkMode
+    ? "bg-slate-900 border-slate-700"
+    : "bg-white border-slate-200";
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Recent Predictions</h2>
-      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-        {history.map((item, index) => {
-          const isPneumonia = item.prediction === 'PNEUMONIA';
-          const confidence = (item.confidence * 100).toFixed(2);
-          const date = new Date().toLocaleDateString();
-          
-          return (
-            <div 
-              key={index} 
-              className={`p-4 rounded-xl border ${
-                darkMode 
-                  ? isPneumonia 
-                    ? 'bg-red-900/20 border-red-800' 
-                    : 'bg-green-900/20 border-green-800'
-                  : isPneumonia 
-                    ? 'bg-red-50 border-red-200' 
-                    : 'bg-green-50 border-green-200'
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center">
-                    <span className={`text-lg font-bold ${
-                      isPneumonia 
-                        ? darkMode ? 'text-red-400' : 'text-red-700'
-                        : darkMode ? 'text-green-400' : 'text-green-700'
-                    }`}>
+    <div
+      className={`rounded-2xl border p-4 shadow-sm ${
+        compact ? "text-xs" : "text-sm"
+      } ${cardStyle}`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-semibold text-sm">
+          {compact ? "Recent Predictions" : "Prediction History"}
+        </h2>
+        <span className="text-[11px] text-slate-500 dark:text-slate-500">
+          {history.length} case{history.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {history.length === 0 ? (
+        <p className="text-[11px] text-slate-500 dark:text-slate-500">
+          No predictions yet.
+        </p>
+      ) : (
+        <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+          {history.map((item) => {
+            const created = item.createdAt
+              ? new Date(item.createdAt)
+              : new Date();
+            return (
+              <li
+                key={item.id}
+                onClick={() => onSelect && onSelect(item)}
+                className={`flex items-center justify-between gap-2 rounded-xl px-2 py-1 cursor-pointer ${
+                  darkMode
+                    ? "hover:bg-slate-800"
+                    : "hover:bg-slate-100 border border-transparent hover:border-slate-300"
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-[11px] truncate">
                       {item.prediction}
                     </span>
-                    <span className="ml-3 bg-gray-200 dark:bg-gray-700 text-xs px-2 py-1 rounded-full">
-                      {confidence}%
+                    <span className="text-[10px] text-slate-500 truncate">
+                      {item.fileName}
                     </span>
                   </div>
-                  <div className="text-sm mt-2 text-gray-500 dark:text-gray-400">
-                    Analyzed on {date}
+                  <div className="text-[10px] text-slate-500">
+                    {created.toLocaleString()}
                   </div>
                 </div>
-                <button className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                <span className="text-[11px] text-slate-500">
+                  {(item.confidence * 100).toFixed(0)}%
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

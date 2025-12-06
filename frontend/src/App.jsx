@@ -1,233 +1,159 @@
-import React, { useState, useEffect } from 'react';
-import ImageUploader from './components/ImageUploader';
-import ResultDisplay from './components/ResultDisplay';
-import HistoryPanel from './components/HistoryPanel';
-import InfoCards from './components/InfoCards';
-import TeamInfo from './components/TeamInfo';
-import './index.css';
+import React, { useState, useEffect } from "react";
+import ImageUploader from "./components/ImageUploader";
+import ResultDisplay from "./components/ResultDisplay";
+import HistoryPanel from "./components/HistoryPanel";
+import InfoCards from "./components/InfoCards";
+import TeamInfo from "./components/TeamInfo";
+
+const CLASS_NAMES = ["COVID", "NORMAL", "PNEUMONIA", "TB"];
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("detect"); // detect | history | info | team
   const [prediction, setPrediction] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [history, setHistory] = useState([]);
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'history', 'info', 'team'
 
-  // Initialize dark mode from localStorage or system preference
+  // load prefs + history
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDarkMode(savedDarkMode || systemPrefersDark);
-    
-    // Load history from localStorage
-    const savedHistory = localStorage.getItem('predictionHistory');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
+    const savedDark = localStorage.getItem("darkMode");
+    if (savedDark !== null) setDarkMode(savedDark === "true");
+
+    const savedHist = localStorage.getItem("predictionHistory");
+    if (savedHist) setHistory(JSON.parse(savedHist));
   }, []);
 
-  // Save dark mode preference
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('darkMode', darkMode.toString());
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("darkMode", darkMode.toString());
   }, [darkMode]);
 
-  // Handle new prediction
+  useEffect(() => {
+    localStorage.setItem("predictionHistory", JSON.stringify(history));
+  }, [history]);
+
   const handleNewPrediction = (result) => {
     setPrediction(result);
-    
-    // Add to history (keep last 5)
-    const newHistory = [result, ...history.slice(0, 4)];
-    setHistory(newHistory);
-    localStorage.setItem('predictionHistory', JSON.stringify(newHistory));
+    setActiveTab("detect");
+    setHistory((prev) => [result, ...prev].slice(0, 20));
   };
 
+  const handleHistorySelect = (item) => {
+    setPrediction(item);
+    setPreview(item.preview || null);
+    setActiveTab("detect");
+  };
+
+  const bg = darkMode
+    ? "bg-slate-950 text-slate-100"
+    : "bg-slate-100 text-slate-900";
+
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-between p-4 sm:p-6 transition-colors duration-300 ${
-      darkMode 
-        ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100' 
-        : 'bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-800'
-    }`}>
-      <div className="w-full max-w-6xl">
-        {/* Header */}
-        <header className="w-full text-center mb-8 md:mb-12">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-4xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700 tracking-tight drop-shadow-sm">
-              Pneumonia Insight AI
+    <div className={`${bg} min-h-screen transition-colors`}>
+      <header className="border-b border-slate-800/20 dark:border-slate-700/60 bg-gradient-to-r from-indigo-500/10 via-slate-500/5 to-teal-500/10 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">
+              PneumoVision&nbsp;
+              <span className="text-indigo-500">X-Ray AI</span>
             </h1>
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-full bg-white/20 backdrop-blur-sm shadow-lg"
-              aria-label="Toggle dark mode"
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Multi-class chest X-ray classifier (COVID / Normal / Pneumonia / TB){" "}
+              + Grad-CAM explainability
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400">
+              {darkMode ? "Dark" : "Light"} mode
+            </span>
+            <button
+              onClick={() => setDarkMode((d) => !d)}
+              className="relative inline-flex h-8 w-14 items-center rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/70 shadow-sm"
             >
-              {darkMode ? '☀️' : '🌙'}
+              <span
+                className={`inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-indigo-500 text-white text-xs shadow transition-transform ${
+                  darkMode ? "translate-x-6" : "translate-x-1"
+                }`}
+              >
+                {darkMode ? "🌙" : "☀️"}
+              </span>
             </button>
           </div>
-          <p className={`text-md sm:text-lg ${
-            darkMode ? 'text-gray-300' : 'text-gray-700'
-          } leading-relaxed max-w-2xl mx-auto`}>
-            Upload a chest X-ray for an instant, AI-powered pneumonia diagnosis
-          </p>
-        </header>
-
-        {/* Main Content */}
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Panel - Tabs Content */}
-          <div className="flex-1">
-            <div className={`bg-white dark:bg-gray-800/80 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-2xl w-full border ${
-              darkMode ? 'border-gray-700' : 'border-gray-200'
-            } transition-all duration-500 ease-in-out transform hover:scale-[1.01]`}>
-              {/* Tab Navigation */}
-              <div className="flex mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-                <button 
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'upload' 
-                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                  onClick={() => setActiveTab('upload')}
-                >
-                  Diagnosis
-                </button>
-                <button 
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'history' 
-                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                  onClick={() => setActiveTab('history')}
-                >
-                  History
-                </button>
-                <button 
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'info' 
-                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                  onClick={() => setActiveTab('info')}
-                >
-                  Learn More
-                </button>
-                <button 
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'team' 
-                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                  onClick={() => setActiveTab('team')}
-                >
-                  Our Team
-                </button>
-              </div>
-              
-              {/* Tab Content */}
-              {activeTab === 'upload' && (
-                <>
-                  <ImageUploader 
-                    onPrediction={handleNewPrediction} 
-                    darkMode={darkMode} 
-                  />
-                  {prediction && <ResultDisplay prediction={prediction} darkMode={darkMode} />}
-                </>
-              )}
-              
-              {activeTab === 'history' && (
-                <HistoryPanel history={history} darkMode={darkMode} />
-              )}
-              
-              {activeTab === 'info' && (
-                <InfoCards darkMode={darkMode} />
-              )}
-              
-              {activeTab === 'team' && (
-                <TeamInfo darkMode={darkMode} />
-              )}
-            </div>
-          </div>
-          
-          {/* Right Panel - About This AI */}
-          <div className="lg:w-1/3">
-            <div className={`bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border ${
-              darkMode ? 'border-gray-700' : 'border-gray-200'
-            }`}>
-              <h2 className="text-xl font-bold mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                About This AI
-              </h2>
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg">
-                  <h3 className="font-bold mb-2">How It Works</h3>
-                  <p className="text-sm">
-                    Our AI uses a deep learning model trained on thousands of chest X-rays 
-                    to identify patterns associated with pneumonia. It analyzes your uploaded 
-                    image and provides a diagnosis with confidence level.
-                  </p>
-                </div>
-                
-                <div className="p-4 bg-green-50/50 dark:bg-green-900/20 rounded-lg">
-                  <h3 className="font-bold mb-2">Data Privacy</h3>
-                  <p className="text-sm">
-                    Your X-ray images are processed temporarily and never stored on our servers. 
-                    All analysis happens on your device or in secure cloud processing.
-                  </p>
-                </div>
-                
-                <div className="p-4 bg-yellow-50/50 dark:bg-yellow-900/20 rounded-lg">
-                  <h3 className="font-bold mb-2">Important Notice</h3>
-                  <p className="text-sm">
-                    This tool provides AI-generated analysis and should not replace professional 
-                    medical advice. Always consult a healthcare provider for medical decisions.
-                  </p>
-                </div>
-                
-                <div className="mt-6">
-                  <h3 className="font-bold mb-2">Trusted Resources</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <a href="https://www.who.int/publications/i/item/9789241507813" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                      WHO
-                    </a>
-                    <a href="https://www.cdc.gov/pneumonia/about/index.html" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                      CDC
-                    </a>
-                    <a href="https://www.lung.org/lung-health-diseases/lung-disease-lookup/pneumonia" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                      American Lung Association
-                    </a>
-                  </div>
-                </div>
-
-                {/* Dataset Section */}
-                <div className="mt-4">
-                  <h3 className="font-bold mb-2">Training Dataset</h3>
-                  <a 
-                    href="https://universe.roboflow.com/mohamed-traore-2ekkp/chest-x-rays-qjmia/dataset/3" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
-                    Chest X-Ray Dataset on Roboflow
-                  </a>
-                </div>
-                
-                <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                  <p>AI Model Version: PneumoNet v2.1</p>
-                  <p>Last Updated: August 2025</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
-      
-      {/* Footer */}
-      <footer className={`mt-10 text-center text-sm ${
-        darkMode ? 'text-gray-400' : 'text-gray-600'
-      }`}>
-        &copy; {new Date().getFullYear()} Pneumonia Insight AI. All rights reserved.
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[2fr,1.2fr]">
+        {/* Left: upload + result */}
+        <section className="space-y-4">
+          {/* Tabs */}
+          <div className="flex gap-2 text-sm">
+            {[
+              { id: "detect", label: "Detection" },
+              { id: "history", label: "History" },
+              { id: "info", label: "Model Insights" },
+              { id: "team", label: "Team" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1.5 rounded-full border text-xs sm:text-sm transition ${
+                  activeTab === tab.id
+                    ? "bg-indigo-500 text-white border-indigo-500 shadow-sm"
+                    : darkMode
+                    ? "border-slate-700 text-slate-300 hover:bg-slate-800"
+                    : "border-slate-300 text-slate-700 hover:bg-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "detect" && (
+            <>
+              <ImageUploader
+                darkMode={darkMode}
+                onPrediction={handleNewPrediction}
+                onPreview={setPreview}
+              />
+              <ResultDisplay
+                prediction={prediction}
+                preview={preview}
+                darkMode={darkMode}
+                classNames={CLASS_NAMES}
+              />
+            </>
+          )}
+
+          {activeTab === "history" && (
+            <HistoryPanel
+              history={history}
+              darkMode={darkMode}
+              onSelect={handleHistorySelect}
+            />
+          )}
+
+          {activeTab === "info" && <InfoCards darkMode={darkMode} />}
+
+          {activeTab === "team" && <TeamInfo darkMode={darkMode} />}
+        </section>
+
+        {/* Right: always show quick info + metrics */}
+        <aside className="space-y-4">
+          <InfoCards darkMode={darkMode} compact />
+          <HistoryPanel
+            history={history.slice(0, 5)}
+            darkMode={darkMode}
+            onSelect={handleHistorySelect}
+            compact
+          />
+        </aside>
+      </main>
+
+      <footer className="py-4 text-center text-xs text-slate-500 dark:text-slate-500 border-t border-slate-200/40 dark:border-slate-800/60">
+        Built as an enhanced IBM major project — multi-class X-ray AI with
+        Grad-CAM, class balancing & model comparison.
       </footer>
     </div>
   );

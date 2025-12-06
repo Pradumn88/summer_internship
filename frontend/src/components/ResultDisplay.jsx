@@ -1,138 +1,137 @@
-import React, { useState, useEffect } from 'react';
+import React from "react";
 
-function ResultDisplay({ prediction, darkMode }) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+function ResultDisplay({ prediction, preview, darkMode, classNames }) {
+  if (!prediction) {
+    return (
+      <div
+        className={`mt-4 rounded-2xl border p-4 text-sm ${
+          darkMode
+            ? "border-slate-800 bg-slate-900 text-slate-300"
+            : "border-slate-200 bg-white text-slate-700"
+        }`}
+      >
+        Upload an X-ray and run detection to see results here.
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
+  const { prediction: label, confidence, probabilities, gradcam } = prediction;
+  const confPct = (confidence * 100).toFixed(1);
 
-  if (!prediction) return null;
+  const isAlert = label === "COVID" || label === "TB" || label === "PNEUMONIA";
 
-  const isPneumonia = prediction.prediction === 'PNEUMONIA';
-  const confidencePercentage = (prediction.confidence * 100).toFixed(2);
-  
-  // Conditional styling
-  const resultContainerClass = isPneumonia 
-    ? darkMode 
-      ? 'bg-gradient-to-br from-red-900/20 to-red-800/10 border-red-700 text-red-200' 
-      : 'bg-gradient-to-br from-red-50 to-red-100 border-red-400 text-red-800'
-    : darkMode 
-      ? 'bg-gradient-to-br from-green-900/20 to-green-800/10 border-green-700 text-green-200' 
-      : 'bg-gradient-to-br from-green-50 to-green-100 border-green-400 text-green-800';
-
-  // Conditional icon
-  const icon = isPneumonia ? (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    </svg>
-  ) : (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-
-  // Handle feedback submission
-  const handleFeedback = (isAccurate) => {
-    // In a real app, you would send this to your backend
-    console.log(`User feedback: ${isAccurate ? 'Accurate' : 'Inaccurate'}`);
-    setFeedbackSubmitted(true);
-    setShowFeedback(false);
-  };
+  const cardClasses = isAlert
+    ? darkMode
+      ? "from-rose-900/40 to-amber-900/30 border-rose-700/70"
+      : "from-rose-50 to-amber-50 border-rose-300"
+    : darkMode
+    ? "from-emerald-900/30 to-sky-900/20 border-emerald-700/60"
+    : "from-emerald-50 to-sky-50 border-emerald-300";
 
   return (
-    <div className={`mt-8 p-6 rounded-2xl border-2 ${resultContainerClass} text-center shadow-xl transition-all duration-700 ease-out transform ${
-      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-    }`}>
-      <div className="flex items-center justify-center mb-4">
-        {icon}
-        <h2 className="text-2xl font-bold">Prediction Result</h2>
-      </div>
-      
-      <div className="bg-white/20 dark:bg-black/20 backdrop-blur-sm p-4 rounded-xl mb-4">
-        <p className="text-xl mb-2">
-          Diagnosis: <span className="font-extrabold text-2xl">{prediction.prediction}</span>
-        </p>
-        <p className="text-xl flex items-center justify-center">
-          Confidence: 
-          <span className="font-extrabold ml-2 text-2xl">{confidencePercentage}%</span>
-          <button 
-            className="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 relative"
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-            onClick={() => setShowTooltip(!showTooltip)}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {showTooltip && (
-              <div className={`absolute left-full ml-2 mt-2 p-3 rounded-lg shadow-lg text-sm max-w-xs z-10 ${
-                darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-              }`}>
-                Confidence measures how certain the AI is about its prediction. 
-                It's calculated based on patterns learned from thousands of X-ray images.
-              </div>
-            )}
-          </button>
-        </p>
-      </div>
-
-      {isPneumonia && (
-        <div className={`p-4 rounded-lg mb-4 ${
-          darkMode ? 'bg-red-900/30 border border-red-800' : 'bg-red-100 border border-red-200'
-        }`}>
-          <p className="font-medium">
-            <span className="font-semibold">Important:</span> This is an AI-generated prediction and should not replace professional medical advice.
+    <div
+      className={`mt-4 rounded-2xl border bg-gradient-to-br p-4 sm:p-5 shadow-md ${cardClasses}`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-lg font-semibold">Prediction Result</h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Model: MobileNetV2 + DenseNet121 (ensemble), trained on 4 classes
           </p>
         </div>
-      )}
-      
-      {/* Feedback Section */}
-      {!feedbackSubmitted ? (
-        <div className="mt-4">
-          <button 
-            onClick={() => setShowFeedback(!showFeedback)}
-            className={`text-sm px-3 py-1 rounded-full ${
-              darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-            } transition-colors`}
-          >
-            {showFeedback ? 'Cancel Feedback' : 'Was this helpful?'}
-          </button>
-          
-          {showFeedback && (
-            <div className="mt-3 flex justify-center space-x-3">
-              <button 
-                onClick={() => handleFeedback(true)}
-                className="px-4 py-2 bg-green-500 text-white rounded-full flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Yes
-              </button>
-              <button 
-                onClick={() => handleFeedback(false)}
-                className="px-4 py-2 bg-red-500 text-white rounded-full flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                No
-              </button>
+        <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-slate-900/80 text-slate-100">
+          {confPct}% confidence
+        </span>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Images */}
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            X-ray & Grad-CAM
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-900/5 flex items-center justify-center">
+              {preview ? (
+                <img
+                  src={preview}
+                  alt="Original X-ray"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <span className="text-[11px] text-slate-500 p-2 text-center">
+                  Original preview not available
+                </span>
+              )}
             </div>
-          )}
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-900/5 flex items-center justify-center">
+              {gradcam ? (
+                <img
+                  src={`data:image/png;base64,${gradcam}`}
+                  alt="Grad-CAM heatmap"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <span className="text-[11px] text-slate-500 p-2 text-center">
+                  Grad-CAM not generated
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="mt-4 text-green-500 dark:text-green-400 text-sm">
-          Thank you for your feedback!
+
+        {/* Text + per-class probs */}
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Predicted Class
+            </div>
+            <div className="mt-1 inline-flex items-center gap-2">
+              <span className="text-xl font-bold">{label}</span>
+              {isAlert && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-300 border border-red-500/40">
+                  Flagged — requires clinical review
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+              Per-class probability
+            </div>
+            <div className="space-y-1.5">
+              {classNames.map((cls, i) => {
+                const p = probabilities?.[i] ?? 0;
+                const pct = (p * 100).toFixed(1);
+                return (
+                  <div key={cls} className="flex items-center gap-2">
+                    <div className="w-20 text-[11px] font-medium">{cls}</div>
+                    <div className="flex-1 h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          cls === label
+                            ? "bg-indigo-500"
+                            : "bg-slate-400 dark:bg-slate-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="w-10 text-[11px] text-right">{pct}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-500 leading-snug">
+            This is an AI assistance system trained on retrospective chest X-ray
+            datasets. It <span className="font-semibold">does not replace</span>{" "}
+            a radiologist. All outputs must be interpreted by qualified medical
+            professionals.
+          </p>
         </div>
-      )}
-      
-      {/* Comparison Examples */}
-      
+      </div>
     </div>
   );
 }
