@@ -10,12 +10,12 @@ import csv
 import base64
 import cv2
 from datetime import datetime
+from typing import List, Optional
 
 import os
 
 print("FILES IN /app/models:", os.listdir("models"))
 print("CURRENT DIRECTORY:", os.getcwd())
-
 
 # ------------------ PATHS & CONSTANTS ------------------
 
@@ -32,8 +32,8 @@ LOG_FILE = os.path.join(LOG_DIR, "predictions.csv")
 CLASS_NAMES = ["COVID", "NORMAL", "PNEUMONIA", "TB"]
 IMG_SIZE = (224, 224)
 
-mobile_model = None
-densenet_model = None
+mobile_model: Optional[models.Model] = None
+densenet_model: Optional[models.Model] = None
 
 # ------------------ FASTAPI SETUP ------------------
 
@@ -76,7 +76,7 @@ def load_models():
         densenet_model = None
         print("ℹ️ DenseNet model not found, using only MobileNetV2.")
 
-    # Warm-up
+    # Warm-up both models
     dummy = np.zeros((1, IMG_SIZE[0], IMG_SIZE[1], 3), dtype=np.float32)
     mobile_model.predict(dummy)
     if densenet_model is not None:
@@ -101,13 +101,59 @@ def preprocess_image(image_bytes):
     return x, original_rgb
 
 
+# ------------------ UTILS: LUNG MASK (CLASSIC CV) ------------------
+
+
+def make_lung_mask(original_rgb: np.ndarray) -> np.ndarray:
+    """
+    Very simple classical CV lung mask.
+    Not perfect but helps suppress ribs / labels / corners.
+    Returns mask in [0,1] with same HxW as image.
+    """
+    gray = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2GRAY)
+
+    # Improve contrast a bit
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray_eq = clahe.apply(gray)
+
+    # Blur + Otsu threshold
+    blur = cv2.GaussianBlur(gray_eq, (5, 5), 0)
+    _, thresh = cv2.threshold(
+        blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+
+    # Invert: lungs darker → foreground
+    thresh = 255 - thresh
+
+    # Morphology to smooth shape
+    kernel = np.ones((7, 7), np.uint8)
+    opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    # Keep largest 2 connected components (roughly both lungs)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+        closed, connectivity=8
+    )
+    if num_labels > 1:
+        areas = stats[1:, cv2.CC_STAT_AREA]  # skip background
+        largest_indices = np.argsort(areas)[-2:] + 1
+        lung_mask = np.isin(labels, largest_indices).astype("float32")
+    else:
+        lung_mask = (closed > 0).astype("float32")
+
+    # Normalize to [0,1]
+    lung_mask = cv2.GaussianBlur(lung_mask, (9, 9), 0)
+    lung_mask = lung_mask / (lung_mask.max() + 1e-8)
+    return lung_mask
+
+
 # ------------------ UTILS: GENERIC GRAD-CAM ------------------
 
 
-def _get_last_conv_layer(model):
+def _get_last_conv_layer(model: tf.keras.Model):
     """
-    Automatically find the last conv-like layer with 4D output.
-    Works even if layer names change.
+    Safely find the last convolution-like 4D layer in the whole model.
+    Works even if TF renames internal MobileNet/DenseNet layers.
     """
     for layer in reversed(model.layers):
         try:
@@ -116,63 +162,115 @@ def _get_last_conv_layer(model):
             continue
         if isinstance(shape, tuple) and len(shape) == 4:
             return layer
-    raise ValueError("No 4D convolutional layer found for Grad-CAM.")
+    raise ValueError("❌ No 4D conv layer found for Grad-CAM.")
 
 
-def make_gradcam_heatmap(img_array, model):
+def make_single_gradcam_heatmap(img_array, model: tf.keras.Model) -> np.ndarray:
     """
-    Generic Grad-CAM implementation.
-
-    img_array: (1, H, W, 3) preprocessed input
-    model: keras.Model
+    Standard Grad-CAM for a single model.
+    img_array: (1,H,W,3) preprocessed
+    returns heatmap in [0,1]
     """
     last_conv_layer = _get_last_conv_layer(model)
 
-    # Model that maps input -> (last conv feature maps, predictions)
     grad_model = tf.keras.Model(
         inputs=model.inputs,
         outputs=[last_conv_layer.output, model.output],
     )
 
     with tf.GradientTape() as tape:
-        conv_output, preds = grad_model(img_array)     # conv_output: (1, h, w, c)
-        tape.watch(conv_output)                        # IMPORTANT
+        conv_output, preds = grad_model(img_array)
+        tape.watch(conv_output)
         top_index = tf.argmax(preds[0])
-        top_channel = preds[:, top_index]
+        top_class = preds[:, top_index]
 
-    # Gradients of top predicted class wrt conv_output
-    grads = tape.gradient(top_channel, conv_output)    # (1, h, w, c)
+    grads = tape.gradient(top_class, conv_output)
     if grads is None:
         raise RuntimeError("Grad-CAM gradients are None")
 
-    grads = grads[0]                                   # (h, w, c)
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1))  # (c,)
+    grads = grads[0]  # (h,w,c)
+    conv_output = conv_output[0]  # (h,w,c)
 
-    conv_output = conv_output[0]                       # (h, w, c)
-    conv_output = conv_output * pooled_grads
+    # Channel-wise importance
+    weights = tf.reduce_mean(grads, axis=(0, 1))  # (c,)
+    cam = tf.reduce_sum(conv_output * weights, axis=-1)  # (h,w)
 
-    heatmap = tf.reduce_mean(conv_output, axis=-1)     # (h, w)
-    heatmap = tf.maximum(heatmap, 0) / (tf.reduce_max(heatmap) + 1e-8)
-    return heatmap.numpy()
+    # Normalize to [0,1]
+    cam = tf.maximum(cam, 0)
+    cam /= tf.reduce_max(cam) + 1e-8
+    return cam.numpy()
 
 
+def make_ensemble_gradcam_heatmap(img_array, models_list: List[tf.keras.Model]) -> np.ndarray:
+    """
+    If multiple models are provided, compute Grad-CAM for each and average.
+    """
+    valid_heatmaps = []
+    for m in models_list:
+        if m is None:
+            continue
+        try:
+            hm = make_single_gradcam_heatmap(img_array, m)
+            valid_heatmaps.append(hm)
+        except Exception as e:
+            print("⚠️ Grad-CAM failed for one model:", e)
 
-def overlay_gradcam(original_rgb, heatmap):
+    if not valid_heatmaps:
+        raise RuntimeError("No valid Grad-CAM heatmaps could be generated.")
+
+    # Resize all to same size & average
+    base_h, base_w = valid_heatmaps[0].shape
+    acc = np.zeros((base_h, base_w), dtype=np.float32)
+    for hm in valid_heatmaps:
+        hm_resized = cv2.resize(hm, (base_w, base_h))
+        acc += hm_resized.astype("float32")
+    acc /= len(valid_heatmaps)
+
+    # Final normalization
+    acc = np.maximum(acc, 0)
+    acc /= acc.max() + 1e-8
+    return acc
+
+
+def overlay_gradcam(original_rgb: np.ndarray, heatmap: np.ndarray) -> str:
     """
     Overlay heatmap on original RGB image and return base64 PNG string.
-    original_rgb: (H, W, 3), uint8 or float
-    heatmap: (h, w) [0,1]
+    - Applies lung mask to suppress background.
+    - Produces a side-by-side (original | overlay) image.
+
+    original_rgb: (H,W,3) uint8
+    heatmap: (h,w) [0,1]
     """
     h, w = original_rgb.shape[:2]
 
+    # Resize heatmap to image size
     heatmap_resized = cv2.resize(heatmap, (w, h))
+
+    # Apply lung mask
+    lung_mask = make_lung_mask(original_rgb)  # (H,W) [0,1]
+    heatmap_resized *= lung_mask
+
+    # Re-normalize after masking
+    if heatmap_resized.max() > 0:
+        heatmap_resized /= heatmap_resized.max()
+
+    # To uint8 and apply color map (sharper look)
     heatmap_uint8 = np.uint8(255 * heatmap_resized)
     heatmap_color = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
 
+    # Convert original to BGR for OpenCV blending
     orig_bgr = cv2.cvtColor(original_rgb, cv2.COLOR_RGB2BGR)
-    overlay = cv2.addWeighted(orig_bgr, 0.6, heatmap_color, 0.4, 0)
 
-    success, buffer = cv2.imencode(".png", overlay)
+    # Stronger overlay weights for sharper Grad-CAM
+    overlay = cv2.addWeighted(orig_bgr, 0.55, heatmap_color, 0.45, 0)
+
+    # Make side-by-side image: [original | overlay]
+    combined = np.zeros((h, w * 2, 3), dtype=np.uint8)
+    combined[:, :w, :] = orig_bgr
+    combined[:, w:, :] = overlay
+
+    # Encode as PNG → base64
+    success, buffer = cv2.imencode(".png", combined)
     if not success:
         raise RuntimeError("Failed to encode Grad-CAM image.")
     return base64.b64encode(buffer).decode("utf-8")
@@ -248,7 +346,11 @@ async def predict(file: UploadFile = File(...)):
         # --- Grad-CAM (non-fatal) ---
         gradcam_b64 = None
         try:
-            heatmap = make_gradcam_heatmap(img_array, mobile_model)
+            models_for_cam = [mobile_model]
+            if densenet_model is not None:
+                models_for_cam.append(densenet_model)
+
+            heatmap = make_ensemble_gradcam_heatmap(img_array, models_for_cam)
             gradcam_b64 = overlay_gradcam(original_rgb, heatmap)
         except Exception as e:
             # We still return prediction even if Grad-CAM fails

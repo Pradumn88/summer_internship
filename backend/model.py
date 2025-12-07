@@ -3,6 +3,10 @@ import datetime
 import warnings
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt                     # <-- ADDED
+from sklearn.metrics import confusion_matrix         # <-- ADDED
+from sklearn.metrics import ConfusionMatrixDisplay   # <-- ADDED
+
 from tensorflow.keras import layers, models, applications, callbacks
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -20,7 +24,6 @@ BASE_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_FILE_DIR, "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-# Use H5 for checkpoint (stable). Final model saved as .keras
 CHECKPOINT_FILE = os.path.join(MODEL_DIR, "checkpoint_model.h5")
 FINAL_MODEL_FILE = os.path.join(MODEL_DIR, "multiclass_xray_model.keras")
 
@@ -153,7 +156,6 @@ def train_and_fine_tune(model, train_ds, val_ds, class_counts):
     log_dir = os.path.join(MODEL_DIR, "logs_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     os.makedirs(log_dir, exist_ok=True)
 
-    # --- FIXED CHECKPOINT (NO options, no keras save format issues) ---
     checkpoint_cb = callbacks.ModelCheckpoint(
         CHECKPOINT_FILE,
         save_best_only=True,
@@ -235,6 +237,42 @@ def evaluate_model(model, test_ds):
     return results
 
 
+# =================== ADDED: TRAINING CURVES PLOT ===================
+
+def plot_curves(history1, history2):                       # <-- ADDED
+    acc = history1.history["accuracy"] + history2.history["accuracy"]
+    val_acc = history1.history["val_accuracy"] + history2.history["val_accuracy"]
+    loss = history1.history["loss"] + history2.history["loss"]
+    val_loss = history1.history["val_loss"] + history2.history["val_loss"]
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(acc, label="Train Accuracy")
+    plt.plot(val_acc, label="Val Accuracy")
+    plt.plot(loss, label="Train Loss")
+    plt.plot(val_loss, label="Val Loss")
+    plt.legend()
+    plt.title("Training & Validation Curves")
+    plt.savefig(os.path.join(MODEL_DIR, "training_curves.png"))
+    plt.close()
+
+
+# =================== ADDED: CONFUSION MATRIX ===================
+
+def create_confusion_matrix(model, test_ds, class_names):        # <-- ADDED
+    y_true = test_ds.classes
+    preds = model.predict(test_ds)
+    y_pred = np.argmax(preds, axis=1)
+
+    cm = confusion_matrix(y_true, y_pred)
+
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    disp.plot(ax=ax, cmap="Blues", values_format="d")
+    plt.title("Confusion Matrix")
+    plt.savefig(os.path.join(MODEL_DIR, "confusion_matrix.png"))
+    plt.close()
+
+
 # ================= MAIN =================
 
 if __name__ == "__main__":
@@ -247,10 +285,21 @@ if __name__ == "__main__":
 
     evaluate_model(model, test_ds)
 
-    # FINAL SAVE (only once)
+    # SAVE FINAL MODEL
     model.save(FINAL_MODEL_FILE)
     print(f"\n💾 Final model saved to: {FINAL_MODEL_FILE}")
 
+    # SAVE CLASS NAMES
     with open(os.path.join(MODEL_DIR, "class_names.txt"), "w") as f:
         for c in class_names:
             f.write(c + "\n")
+
+    # NEW: TRAINING CURVES
+    plot_curves(h1, h2)                              # <-- ADDED
+    print("📊 Saved: training_curves.png")
+
+    # NEW: CONFUSION MATRIX
+    create_confusion_matrix(model, test_ds, class_names)    # <-- ADDED
+    print("📊 Saved: confusion_matrix.png")
+
+    print("\n✅ Training complete!")

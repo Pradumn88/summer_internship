@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 
 // Load backend URL from .env
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+// ImageUploader.jsx (top of file)
+const API_URL =
+  `${process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000"}/predict`;
+
 
 function ImageUploader({ darkMode, onPrediction, onPreview }) {
   const [file, setFile] = useState(null);
