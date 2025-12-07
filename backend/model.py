@@ -8,6 +8,8 @@ from sklearn.utils.class_weight import compute_class_weight
 
 warnings.filterwarnings("ignore")
 
+# ================= PATHS =================
+
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "chest_xray")
 IMAGE_SIZE = (224, 224)
 BATCH_SIZE = 32
@@ -17,9 +19,12 @@ FINE_TUNE_EPOCHS = 8
 BASE_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_FILE_DIR, "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
-MODEL_FILE = os.path.join(MODEL_DIR, "multiclass_xray_model.keras")
 
-# ---------- DATA LOADING ----------
+# Use H5 for checkpoint (stable). Final model saved as .keras
+CHECKPOINT_FILE = os.path.join(MODEL_DIR, "checkpoint_model.h5")
+FINAL_MODEL_FILE = os.path.join(MODEL_DIR, "multiclass_xray_model.keras")
+
+# ================= DATA LOADING =================
 
 def load_datasets():
     print("\n📂 Loading datasets...")
@@ -82,11 +87,8 @@ def load_datasets():
 
     return train_ds, val_ds, test_ds, class_names, class_counts, total_samples
 
-# ---------- MIXUP GENERATOR ----------
 
-
-
-# ---------- MODEL CREATION ----------
+# ================= MODEL CREATION =================
 
 def create_model(num_classes):
     print("\n🧠 Building MobileNetV2-based model...")
@@ -131,44 +133,43 @@ def create_model(num_classes):
             tf.keras.metrics.AUC(name="auc", curve="PR"),
         ],
     )
+
     model.summary()
     return model
 
-# ---------- TRAIN & FINE-TUNE ----------
+
+# ================= TRAIN & FINE-TUNE =================
 
 def train_and_fine_tune(model, train_ds, val_ds, class_counts):
-    print("\n🎯 Training with class-balanced loss (no MixUp in final run)...")
+    print("\n🎯 Training with class-balanced loss...")
 
-    # ----- class weights for imbalance -----
     labels = train_ds.classes
     classes = np.unique(labels)
+
     class_weights_arr = compute_class_weight("balanced", classes=classes, y=labels)
     class_weights = {i: float(w) for i, w in enumerate(class_weights_arr)}
-    print(f"⚖️ Class weights used in training: {class_weights}")
+    print("⚖️ Class weights:", class_weights)
 
-    log_dir = os.path.join(
-        BASE_FILE_DIR, "logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    )
+    log_dir = os.path.join(MODEL_DIR, "logs_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     os.makedirs(log_dir, exist_ok=True)
 
+    # --- FIXED CHECKPOINT (NO options, no keras save format issues) ---
+    checkpoint_cb = callbacks.ModelCheckpoint(
+        CHECKPOINT_FILE,
+        save_best_only=True,
+        monitor="val_auc",
+        mode="max",
+        verbose=1
+    )
+
     cb_list = [
-        callbacks.EarlyStopping(
-            patience=7, monitor="val_auc", mode="max", restore_best_weights=True
-        ),
-        callbacks.ReduceLROnPlateau(
-            monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6, verbose=1
-        ),
-        callbacks.ModelCheckpoint(
-            MODEL_FILE,
-            save_best_only=True,
-            monitor="val_auc",
-            mode="max",
-            verbose=1,
-        ),
+        checkpoint_cb,
+        callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3),
+        callbacks.EarlyStopping(monitor="val_auc", patience=7, restore_best_weights=True),
         callbacks.CSVLogger(os.path.join(log_dir, "training_log.csv")),
     ]
 
-    # ---------- STAGE 1: train top head ----------
+    # ---- STAGE 1 ----
     history = model.fit(
         train_ds,
         epochs=EPOCHS,
@@ -177,8 +178,8 @@ def train_and_fine_tune(model, train_ds, val_ds, class_counts):
         class_weight=class_weights,
     )
 
-    # ---------- STAGE 2: fine-tune base ----------
-    print("\n🔧 Fine-tuning base MobileNetV2 layers...")
+    # ---- STAGE 2 Fine-tuning ----
+    print("\n🔧 Fine-tuning base model...")
     base_model = model.get_layer("mobilenetv2_1.00_224")
     base_model.trainable = True
 
@@ -207,13 +208,11 @@ def train_and_fine_tune(model, train_ds, val_ds, class_counts):
     return history, history_fine
 
 
-
-# ---------- EVALUATION ----------
+# ================= EVALUATION =================
 
 def evaluate_model(model, test_ds):
     print("\n🧪 Evaluating on test set...")
 
-    # ALWAYS recompile with our desired metrics, ignore whatever was saved
     model.compile(
         optimizer=tf.keras.optimizers.Adam(1e-5),
         loss="categorical_crossentropy",
@@ -226,45 +225,31 @@ def evaluate_model(model, test_ds):
     )
 
     results = model.evaluate(test_ds)
-    metric_names = model.metrics_names  # ['loss','accuracy','precision','recall','auc']
-
-    print("\n📊 Test Metrics:")
-    for name, value in zip(metric_names, results):
-        if name in ["accuracy", "precision", "recall", "auc"]:
-            print(f"  {name.capitalize():<10}: {value:.2%}")
-        else:
-            print(f"  {name.capitalize():<10}: {value:.4f}")
-
-    # Save clean report
-    lines = ["Model Evaluation Report", f"Date: {datetime.datetime.now()}"]
-    for name, value in zip(metric_names, results):
-        if name in ["accuracy", "precision", "recall", "auc"]:
-            lines.append(f"{name}: {value:.4%}")
-        else:
-            lines.append(f"{name}: {value:.4f}")
 
     report_path = os.path.join(MODEL_DIR, "evaluation_report.txt")
     with open(report_path, "w") as f:
-        f.write("\n".join(lines))
+        f.write("Evaluation Results\n")
+        for name, val in zip(model.metrics_names, results):
+            f.write(f"{name}: {val}\n")
 
-    print(f"📝 Evaluation report saved to {report_path}")
     return results
 
 
-
-# ---------- MAIN ----------
+# ================= MAIN =================
 
 if __name__ == "__main__":
-    print("\n========================================")
-    print("🚀 MULTI-CLASS CHEST X-RAY TRAINING")
-    print("========================================\n")
+    print("\n🚀 START TRAINING\n")
 
     train_ds, val_ds, test_ds, class_names, class_counts, total = load_datasets()
-    model = create_model(num_classes=len(class_names))
+    model = create_model(len(class_names))
+
     h1, h2 = train_and_fine_tune(model, train_ds, val_ds, class_counts)
+
     evaluate_model(model, test_ds)
-    model.save(MODEL_FILE)
-    print(f"\n💾 Final model saved to {MODEL_FILE}")
+
+    # FINAL SAVE (only once)
+    model.save(FINAL_MODEL_FILE)
+    print(f"\n💾 Final model saved to: {FINAL_MODEL_FILE}")
 
     with open(os.path.join(MODEL_DIR, "class_names.txt"), "w") as f:
         for c in class_names:

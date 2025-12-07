@@ -3,9 +3,12 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Ignore ENV files
+# ENV
 venv/
 .venv/
 
-# Ignore logs
+# Logs
 logs/
+
+# DO NOT IGNORE MODELS
+# (We want to push trained models)

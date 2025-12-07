@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000/predict";
+// Load backend URL from .env
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 function ImageUploader({ darkMode, onPrediction, onPreview }) {
   const [file, setFile] = useState(null);
@@ -11,6 +12,7 @@ function ImageUploader({ darkMode, onPrediction, onPreview }) {
     const f = e.target.files?.[0];
     setFile(f || null);
     setError("");
+
     if (f && onPreview) {
       const reader = new FileReader();
       reader.onloadend = () => onPreview(reader.result);
@@ -25,13 +27,20 @@ function ImageUploader({ darkMode, onPrediction, onPreview }) {
       setError("Please select a chest X-ray image first.");
       return;
     }
+
+    if (!API_URL) {
+      setError("Backend URL is missing. Check your .env file.");
+      return;
+    }
+
     setError("");
     setUploading(true);
+
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}/predict`, {
         method: "POST",
         body: formData,
       });
@@ -47,11 +56,10 @@ function ImageUploader({ darkMode, onPrediction, onPreview }) {
         id: Date.now(),
         fileName: file.name,
         prediction: data.prediction,
-        confidence: data.confidence, // 0–1
+        confidence: data.confidence, 
         probabilities: data.probabilities,
         gradcam: data.gradcam || null,
         createdAt: new Date().toISOString(),
-        preview: typeof onPreview === "function" ? undefined : null,
       };
 
       onPrediction(result);
@@ -71,8 +79,8 @@ function ImageUploader({ darkMode, onPrediction, onPreview }) {
     <div className={`rounded-2xl border p-4 sm:p-5 shadow-sm ${cardStyle}`}>
       <h2 className="text-lg font-semibold mb-2">Upload Chest X-ray</h2>
       <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">
-        JPEG / PNG chest X-ray image. The model will classify it into COVID, Normal,
-        Pneumonia or TB and generate a Grad-CAM heatmap.
+        JPEG / PNG chest X-ray image. The model will classify it into COVID,
+        Normal, Pneumonia or TB and generate a Grad-CAM heatmap.
       </p>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -85,6 +93,7 @@ function ImageUploader({ darkMode, onPrediction, onPreview }) {
           />
           📁 Choose X-ray
         </label>
+
         <button
           onClick={handleUpload}
           disabled={uploading}

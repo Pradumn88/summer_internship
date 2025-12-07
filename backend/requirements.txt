@@ -1,23 +1,22 @@
-# Backend Framework
+# ---------------- Backend Framework ----------------
 fastapi==0.103.2
 uvicorn==0.30.1
 python-multipart==0.0.9
+starlette==0.27.0
+gunicorn==22.0.0
 
-# TensorFlow (CPU)
+# ---------------- TensorFlow (CPU Compatible) ----------------
 tensorflow==2.13.0
+keras==2.13.1
 
-# REQUIRED for TF compatibility
+# TensorFlow strict dependencies
 numpy==1.24.3
 typing_extensions==4.5.0
 protobuf==4.25.3
 
-# Image + ML
+# ---------------- Image + ML ----------------
 pillow==10.4.0
-scikit-learn==1.3.2
 opencv-python-headless==4.10.0.84
 
-# Starlette version compatible with FastAPI 0.103.2
-starlette==0.27.0
-
-# Gunicorn for Railway
-gunicorn==22.0.0
+# sklearn compatible with numpy 1.24.x
+scikit-learn==1.3.2
